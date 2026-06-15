@@ -1,0 +1,232 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: 'Press Start 2P', cursive;
+  background: #0f0f23;
+  color: #ffffff;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.05); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+@keyframes glow {
+  0%, 100% { box-shadow: 0 0 20px currentColor, 0 0 40px currentColor; }
+  50% { box-shadow: 0 0 30px currentColor, 0 0 60px currentColor; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes onlineProjectilePulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.92;
+  }
+  50% {
+    transform: scale(1.18);
+    opacity: 1;
+  }
+}
+
+@keyframes onlineSkillPopup {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.82);
+  }
+  16% {
+    opacity: 1;
+    transform: translateY(-8px) scale(1.06);
+  }
+  74% {
+    opacity: 1;
+    transform: translateY(-22px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-36px) scale(0.96);
+  }
+}
+
+@keyframes onlineDamageFloat {
+  0% {
+    opacity: 0;
+    transform: translateY(12px) scale(0.72);
+  }
+  18% {
+    opacity: 1;
+    transform: translateY(-10px) scale(1.18);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-46px) scale(0.92);
+  }
+}
+
+@keyframes onlineBurst {
+  0% {
+    opacity: 0.95;
+    transform: scale(0.18) rotate(0deg);
+  }
+  72% {
+    opacity: 0.42;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.65) rotate(34deg);
+  }
+}
+
+.animate-pulse {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-shake {
+  animation: shake 0.3s ease-in-out;
+}
+
+.animate-glow {
+  animation: glow 2s ease-in-out infinite;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.5s ease-out forwards;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+.online-projectile {
+  min-width: 34px;
+  min-height: 34px;
+  display: grid;
+  place-items: center;
+  font-size: 24px;
+  font-weight: 900;
+  line-height: 1;
+  text-shadow: 0 0 14px currentColor, 0 2px 0 #000;
+  filter: drop-shadow(0 0 14px currentColor);
+  animation: onlineProjectilePulse 0.42s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.online-skill-popup {
+  position: absolute;
+  width: 220px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.4;
+  pointer-events: none;
+  z-index: 24;
+  white-space: nowrap;
+  animation: onlineSkillPopup 1.05s ease-out forwards;
+}
+
+.online-skill-popup::before,
+.online-skill-popup::after {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin: 0 7px 2px;
+  border: 1px solid currentColor;
+  transform: rotate(45deg);
+  box-shadow: 0 0 10px currentColor;
+}
+
+.online-skill-popup-ultimate {
+  font-size: 14px;
+  letter-spacing: 1px;
+}
+
+.online-damage-text {
+  position: absolute;
+  width: 68px;
+  text-align: center;
+  font-size: 19px;
+  font-weight: 900;
+  line-height: 1;
+  pointer-events: none;
+  z-index: 25;
+  animation: onlineDamageFloat 0.95s cubic-bezier(0.2, 0.95, 0.3, 1) forwards;
+}
+
+.online-damage-text-crit {
+  font-size: 26px;
+}
+
+.online-burst {
+  position: absolute;
+  width: 62px;
+  height: 62px;
+  border: 2px solid currentColor;
+  border-radius: 999px;
+  pointer-events: none;
+  z-index: 11;
+  animation: onlineBurst 0.62s ease-out forwards;
+}
+
+.online-burst::before,
+.online-burst::after {
+  content: "";
+  position: absolute;
+  inset: 14px;
+  border: 1px solid currentColor;
+  transform: rotate(45deg);
+  opacity: 0.78;
+}
+
+.online-burst-hit {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+}
+
+.online-burst-buff,
+.online-burst-heal {
+  background: radial-gradient(circle, currentColor 0%, transparent 62%);
+}
+
+.online-burst-ultimate {
+  width: 86px;
+  height: 86px;
+  border-width: 3px;
+  animation-duration: 0.78s;
+}
