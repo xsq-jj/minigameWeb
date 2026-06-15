@@ -14,6 +14,11 @@ let socketSingleton: GameSocket | null = null;
 export function createGameSocket(): GameSocket {
   if (socketSingleton) return socketSingleton;
   const url = getSocketServerUrl();
+
+  if (!url) {
+    throw new Error('Missing VITE_SOCKET_URL. Set it to the public URL of the Socket.IO backend.');
+  }
+
   socketSingleton = io(url, {
     transports: ['websocket', 'polling'],
     reconnection: true,

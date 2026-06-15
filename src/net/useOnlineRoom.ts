@@ -44,7 +44,14 @@ export function useOnlineRoom() {
   const socketRef = useRef<GameSocket | null>(null);
 
   useEffect(() => {
-    const socket = createGameSocket();
+    let socket: GameSocket;
+    try {
+      socket = createGameSocket();
+    } catch (error) {
+      useOnlineStore.getState().setError(error instanceof Error ? error.message : 'Socket.IO server is not configured');
+      return;
+    }
+
     socketRef.current = socket;
 
     const onConnect = () => useOnlineStore.getState().setConnected(true);
