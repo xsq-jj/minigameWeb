@@ -3,13 +3,19 @@ import { ClientToServerEvents, ServerToClientEvents } from '@/net/protocol';
 
 export type GameSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
+const LOCAL_SOCKET_URL = 'http://127.0.0.1:3001';
+
+export function getSocketServerUrl(): string {
+  return import.meta.env.VITE_SOCKET_URL || (import.meta.env.DEV ? LOCAL_SOCKET_URL : '');
+}
+
 let socketSingleton: GameSocket | null = null;
 
 export function createGameSocket(): GameSocket {
   if (socketSingleton) return socketSingleton;
-  const url = import.meta.env.VITE_SOCKET_URL || 'http://127.0.0.1:3001';
+  const url = getSocketServerUrl();
   socketSingleton = io(url, {
-    transports: ['websocket'],
+    transports: ['websocket', 'polling'],
     reconnection: true,
     reconnectionAttempts: Infinity,
     reconnectionDelay: 500,

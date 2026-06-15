@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Copy, Link2, Plug, RadioTower, Swords, UserCheck, WifiOff } from 'lucide-react';
 import { characters } from '@/data/characters';
 import { getRoomIdFromUrl, isInviteJoinUrl } from '@/net/roomUrl';
+import { getSocketServerUrl } from '@/net/socketClient';
 import { useOnlineRoom } from '@/net/useOnlineRoom';
 import { useOnlineStore } from '@/store/onlineStore';
 import { useGameStore } from '@/store/gameStore';
@@ -13,6 +14,7 @@ export default function OnlineLobby() {
   const [copied, setCopied] = useState(false);
   const [now, setNow] = useState(Date.now());
   const { createRoom, joinRoom, selectCharacter, setReady, leaveRoom } = useOnlineRoom();
+  const socketServerUrl = getSocketServerUrl() || 'not configured';
   const setScreen = useGameStore((s) => s.setScreen);
   const { connected, roomId, inviteUrl, mySlot, roomState, error } = useOnlineStore();
 
@@ -186,7 +188,7 @@ export default function OnlineLobby() {
         </section>
 
         <footer style={{ color: '#526079', fontSize: 9, display: 'flex', justifyContent: 'space-between' }}>
-          <span>Socket.IO server: {import.meta.env.VITE_SOCKET_URL || 'http://127.0.0.1:3001'}</span>
+          <span>Socket.IO server: {socketServerUrl}</span>
           <span>本地模式不受影响</span>
         </footer>
       </main>
