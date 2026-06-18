@@ -20,7 +20,8 @@ export function createGameSocket(): GameSocket {
   }
 
   socketSingleton = io(url, {
-    transports: ['websocket', 'polling'],
+    transports: ['websocket'],
+    upgrade: false,
     reconnection: true,
     reconnectionAttempts: Infinity,
     reconnectionDelay: 500,

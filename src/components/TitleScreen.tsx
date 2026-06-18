@@ -1,9 +1,12 @@
 import { useEffect } from 'react';
+import { useI18n } from '@/i18n';
 import { useGameStore } from '@/store/gameStore';
 import { getRoomIdFromUrl } from '@/net/roomUrl';
 
 export default function TitleScreen() {
   const setScreen = useGameStore((s) => s.setScreen);
+  const { language, toggleLanguage, t } = useI18n();
+  const copy = t.title;
 
   useEffect(() => {
     if (getRoomIdFromUrl()) {
@@ -36,6 +39,9 @@ export default function TitleScreen() {
       />
       <div style={{ position: 'absolute', top: '12%', left: '12%', fontSize: 52, opacity: 0.1, animation: 'float 3s ease-in-out infinite' }}>OFFICE</div>
       <div style={{ position: 'absolute', bottom: '12%', right: '10%', fontSize: 44, opacity: 0.1, animation: 'float 4s ease-in-out infinite' }}>FIGHT</div>
+      <button type="button" onClick={toggleLanguage} style={languageToggleStyle} aria-label={copy.languageAria}>
+        {language === 'zh' ? 'CN / EN' : 'EN / CN'}
+      </button>
 
       <main style={{ position: 'relative', textAlign: 'center', display: 'grid', gap: 30, justifyItems: 'center', width: 'min(860px, calc(100vw - 32px))' }}>
         <div className="animate-slide-up" style={{ display: 'grid', gap: 18 }}>
@@ -48,10 +54,10 @@ export default function TitleScreen() {
               letterSpacing: 2,
             }}
           >
-            办公室格斗大会
+            {copy.title}
           </h1>
           <p style={{ color: '#93a4c2', fontSize: 12, lineHeight: 1.8 }}>
-            本地双人对战，或创建在线房间，把链接发给朋友实时开打。
+            {copy.subtitle}
           </p>
         </div>
 
@@ -67,20 +73,38 @@ export default function TitleScreen() {
 
         <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', justifyContent: 'center' }}>
           <button onClick={() => setScreen('select')} className="animate-pulse" style={localButton}>
-            本地对战
+            {copy.localBattle}
           </button>
           <button onClick={() => setScreen('online')} style={onlineButton}>
-            在线对战
+            {copy.onlineBattle}
           </button>
         </div>
 
         <div style={{ color: '#526079', fontSize: 10, lineHeight: 1.8 }}>
-          玩家1：W/A/D 移动，J/K/L/I 攻击 · 玩家2：方向键移动，1/2/3/0 攻击
+          {copy.controls}
         </div>
       </main>
     </div>
   );
 }
+
+const languageToggleStyle: React.CSSProperties = {
+  position: 'absolute',
+  top: 22,
+  right: 22,
+  minWidth: 86,
+  height: 36,
+  padding: '0 12px',
+  borderRadius: 6,
+  border: '1px solid rgba(123,231,199,0.45)',
+  background: 'rgba(7, 16, 24, 0.76)',
+  color: '#bfffee',
+  cursor: 'pointer',
+  fontFamily: 'inherit',
+  fontSize: 10,
+  boxShadow: '0 0 18px rgba(123,231,199,0.12)',
+  zIndex: 2,
+};
 
 const baseButton: React.CSSProperties = {
   minWidth: 190,

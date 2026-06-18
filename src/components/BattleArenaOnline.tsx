@@ -1,11 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, Wifi } from 'lucide-react';
 import { characters, Character, Skill } from '@/data/characters';
+import { getProjectileIcon } from '@/data/projectileVisuals';
+import { getLocalizedSkillEventName, getSkillName, getSkillSlotByIndex } from '@/data/skillText';
+import { getCharacterName, useI18n } from '@/i18n';
 import { GAME_HEIGHT, GAME_WIDTH, FIGHTER_HEIGHT, FIGHTER_WIDTH, HP_BAR_HEIGHT, HP_BAR_WIDTH, MP_BAR_HEIGHT, MP_BAR_WIDTH } from '@/game/constants';
 import { GameEvent, PlayerInput, PlayerSlot } from '@/net/protocol';
 import { useOnlineRoom } from '@/net/useOnlineRoom';
 import { useGameStore } from '@/store/gameStore';
 import { useOnlineStore } from '@/store/onlineStore';
+import { useSettingsStore } from '@/store/settingsStore';
 
 const characterMap = new Map(characters.map((character) => [character.id, character]));
 
@@ -24,9 +28,11 @@ type OnlineVisualEffect = {
 };
 
 export default function BattleArenaOnline() {
+  const { t } = useI18n();
   const setScreen = useGameStore((s) => s.setScreen);
   const { sendInput, leaveRoom } = useOnlineRoom();
-  const { snapshot, mySlot, roomId, connected, winner, roomState, battleStart, events } = useOnlineStore();
+  const { snapshot, mySlot, roomId, connected, winner, roomState, battleStart, events, pingMs } = useOnlineStore();
+  const language = useSettingsStore((s) => s.language);
   const keysRef = useRef<Set<string>>(new Set());
   const seqRef = useRef(0);
   const processedEventKeysRef = useRef<Set<string>>(new Set());
@@ -54,7 +60,7 @@ export default function BattleArenaOnline() {
     if (!mySlot || !roomId) return;
     const timer = setInterval(() => {
       sendInput(buildInput(keysRef.current, mySlot, seqRef.current++));
-    }, 1000 / 30);
+    }, 1000 / 60);
     return () => clearInterval(timer);
   }, [mySlot, roomId, sendInput]);
 
@@ -81,12 +87,12 @@ export default function BattleArenaOnline() {
       const key = eventKey(event);
       if (processedEventKeysRef.current.has(key)) continue;
       processedEventKeysRef.current.add(key);
-      freshEffects.push(...buildVisualEffects(event, snapshot, p1Char, p2Char));
+      freshEffects.push(...buildVisualEffects(event, snapshot, p1Char, p2Char, language, t.onlineBattle.victory));
     }
     if (freshEffects.length > 0) {
       setVisualEffects((current) => [...current, ...freshEffects].slice(-36));
     }
-  }, [events, p1Char, p2Char, snapshot]);
+  }, [events, language, p1Char, p2Char, snapshot]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -104,15 +110,15 @@ export default function BattleArenaOnline() {
     return (
       <div style={{ width: '100vw', height: '100vh', display: 'grid', placeItems: 'center', background: '#0a0a1a', color: '#f5f7fb' }}>
         <div style={{ textAlign: 'center', display: 'grid', gap: 18 }}>
-          <div style={{ fontSize: 18, color: '#ffd15c' }}>{winner ? `P${winner} 获胜` : countdown ? `对战倒计时 ${countdown}` : '等待服务器战斗快照'}</div>
-          <div style={{ fontSize: 10, color: '#8492ad' }}>房间 {roomId || '-'} · {connected ? 'online' : 'offline'}</div>
+          <div style={{ fontSize: 18, color: '#ffd15c' }}>{winner ? t.onlineBattle.playerWins(winner) : countdown ? t.onlineBattle.battleCountdown(countdown) : t.onlineBattle.waitingSnapshot}</div>
+          <div style={{ fontSize: 10, color: '#8492ad' }}>{t.common.room} {roomId || '-'} · {connected ? t.common.online : t.common.offline}</div>
           <button
             onClick={() => {
               setScreen('online');
             }}
             style={ghostButton}
           >
-            返回在线大厅
+            {t.onlineBattle.backToLobby}
           </button>
         </div>
       </div>
@@ -131,9 +137,9 @@ export default function BattleArenaOnline() {
           {p1.combo >= 2 && <ComboText n={p1.combo} />}
         </div>
         <div style={{ textAlign: 'center', display: 'grid', gap: 7 }}>
-          <div style={{ fontSize: 22, color: '#ffd15c', textShadow: '0 0 15px rgba(255,209,92,0.6)', fontWeight: 'bold' }}>ONLINE VS</div>
+          <div style={{ fontSize: 22, color: '#ffd15c', textShadow: '0 0 15px rgba(255,209,92,0.6)', fontWeight: 'bold' }}>{t.onlineBattle.onlineVs}</div>
           <div style={{ fontSize: 9, color: connected ? '#7be7c7' : '#ff6b7a', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <Wifi size={12} /> {roomId} · P{mySlot}
+            <Wifi size={12} /> {roomId} · P{mySlot} · {t.onlineBattle.ping(pingMs)}
           </div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', width: '40%', gap: 4 }}>
@@ -147,7 +153,7 @@ export default function BattleArenaOnline() {
         <ArenaBackground />
         {snapshot.projectiles.map((projectile) => (
           <div key={projectile.id} className="online-projectile" style={{ position: 'absolute', left: projectile.x - 20, top: projectile.y - 18, color: projectile.trailColor, zIndex: 9 }}>
-            {projectileIcon(projectile.type)}
+            {getProjectileIcon(projectile.type)}
           </div>
         ))}
         <FighterDiv fighter={p1} char={p1Char} />
@@ -186,17 +192,17 @@ export default function BattleArenaOnline() {
         {winner && (
           <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', background: 'rgba(0,0,0,0.45)', zIndex: 30 }}>
             <div style={{ minWidth: 340, padding: 30, border: `1px solid ${winnerChar?.color || '#ffd15c'}88`, background: 'rgba(8,12,22,0.92)', borderRadius: 8, textAlign: 'center', display: 'grid', gap: 16, boxShadow: `0 0 48px ${winnerChar?.color || '#ffd15c'}33` }}>
-              <div style={{ fontSize: 12, color: '#7be7c7', letterSpacing: 2 }}>BATTLE RESULT</div>
-              <div style={{ fontSize: 30, color: winnerChar?.color || '#ffd15c', textShadow: `0 0 22px ${winnerChar?.color || '#ffd15c'}` }}>P{winner} 获胜</div>
+              <div style={{ fontSize: 12, color: '#7be7c7', letterSpacing: 2 }}>{t.onlineBattle.battleResult}</div>
+              <div style={{ fontSize: 30, color: winnerChar?.color || '#ffd15c', textShadow: `0 0 22px ${winnerChar?.color || '#ffd15c'}` }}>{t.onlineBattle.playerWins(winner)}</div>
               <div style={{ fontSize: 52, filter: `drop-shadow(0 0 20px ${winnerChar?.color || '#ffd15c'})` }}>{winnerChar?.sprite || '★'}</div>
-              <div style={{ fontSize: 11, color: '#dfe7f7' }}>{winnerChar?.name || `玩家 ${winner}`} 赢得了本局</div>
+              <div style={{ fontSize: 11, color: '#dfe7f7' }}>{t.onlineBattle.winnerLine(getCharacterName(winnerChar, language) || t.characterSelect.playerLabel(winner))}</div>
               <button
                 onClick={() => {
                   setScreen('online');
                 }}
                 style={primaryButton}
               >
-                返回在线大厅
+                {t.onlineBattle.backToLobby}
               </button>
             </div>
           </div>
@@ -204,7 +210,7 @@ export default function BattleArenaOnline() {
       </div>
 
       <div style={{ width: GAME_WIDTH, margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 14, alignItems: 'center', padding: '10px 16px', background: '#101426', borderTop: '2px solid #26324a', flex: 1 }}>
-        <SkillHints char={p1Char} slot={1} align="left" active={mySlot === 1} />
+        <SkillHints char={p1Char} slot={1} align="left" active={mySlot === 1} language={language} />
         <button
           onClick={() => {
             leaveRoom();
@@ -213,9 +219,9 @@ export default function BattleArenaOnline() {
           style={ghostButton}
         >
           <ArrowLeft size={14} />
-          离开
+          {t.onlineBattle.leave}
         </button>
-        <SkillHints char={p2Char} slot={2} align="right" active={mySlot === 2} />
+        <SkillHints char={p2Char} slot={2} align="right" active={mySlot === 2} language={language} />
       </div>
     </div>
   );
@@ -246,7 +252,9 @@ function buildVisualEffects(
   event: GameEvent,
   snapshot: NonNullable<ReturnType<typeof useOnlineStore.getState>['snapshot']>,
   p1Char: Character | null | undefined,
-  p2Char: Character | null | undefined
+  p2Char: Character | null | undefined,
+  language: 'zh' | 'en',
+  victoryText: string
 ): OnlineVisualEffect[] {
   const createdAt = Date.now();
   if (event.type === 'hit') {
@@ -288,7 +296,7 @@ function buildVisualEffects(
         y: fighter.y - FIGHTER_HEIGHT - 22,
         color,
         createdAt,
-        text: event.skillName,
+        text: getLocalizedSkillEventName(char, event.skillIndex, event.skillName, language),
         variant,
       },
       {
@@ -327,7 +335,7 @@ function buildVisualEffects(
       y: winnerFighter.y - FIGHTER_HEIGHT - 28,
       color: winnerChar?.color || '#ffd15c',
       createdAt,
-      text: '胜利',
+      text: victoryText,
       variant: 'ultimate',
     },
   ];
@@ -335,9 +343,7 @@ function buildVisualEffects(
 
 function getSkillByIndex(char: Character | null | undefined, index: number) {
   if (!char) return null;
-  if (index === 0) return char.skills.skill1;
-  if (index === 1) return char.skills.skill2;
-  return char.skills.ultimate;
+  return char.skills[getSkillSlotByIndex(index)];
 }
 
 function ArenaBackground() {
@@ -353,15 +359,16 @@ function ArenaBackground() {
 }
 
 function FighterDiv({ fighter, char, flip }: { fighter: { x: number; y: number; facingRight: boolean; hitFlash: number; isShielded: boolean; isBlocking: boolean; isAttacking: boolean; isStunned: boolean }; char: Character | null | undefined; flip?: boolean }) {
+  const { language, t } = useI18n();
   const dir = flip ? (fighter.facingRight ? 'scaleX(-1)' : '') : fighter.facingRight ? '' : 'scaleX(-1)';
   const color = char?.color || '#7be7c7';
   return (
-    <div style={{ position: 'absolute', left: fighter.x - FIGHTER_WIDTH / 2, top: fighter.y - FIGHTER_HEIGHT, width: FIGHTER_WIDTH, height: FIGHTER_HEIGHT, transform: dir, transition: 'left 0.08s linear, top 0.08s linear', filter: fighter.hitFlash > 0 ? 'brightness(4) saturate(0)' : 'none', zIndex: 12 }}>
+    <div style={{ position: 'absolute', left: fighter.x - FIGHTER_WIDTH / 2, top: fighter.y - FIGHTER_HEIGHT, width: FIGHTER_WIDTH, height: FIGHTER_HEIGHT, transform: dir, transition: 'left 0.04s linear, top 0.04s linear', filter: fighter.hitFlash > 0 ? 'brightness(4) saturate(0)' : 'none', zIndex: 12 }}>
       <div style={{ width: '100%', height: '100%', display: 'grid', placeItems: 'center', background: fighter.isShielded ? `radial-gradient(circle, ${color}44 0%, transparent 72%)` : fighter.isBlocking ? `radial-gradient(circle, ${color}33 0%, transparent 60%)` : 'none', borderRadius: 8 }}>
         <div style={{ fontSize: 56, transform: fighter.isAttacking ? 'scale(1.16)' : 'scale(1)', transition: 'transform 0.08s', filter: `drop-shadow(0 0 14px ${color})` }}>{char?.sprite || '?'}</div>
-        <div style={{ fontSize: 8, color, textShadow: `0 0 8px ${color}` }}>{char?.name || 'Unknown'}</div>
+        <div style={{ fontSize: 8, color, textShadow: `0 0 8px ${color}` }}>{getCharacterName(char, language) || t.common.unknown}</div>
       </div>
-      {fighter.isStunned && <div style={{ position: 'absolute', top: -24, left: '50%', transform: 'translateX(-50%)', fontSize: 18 }}>STUN</div>}
+      {fighter.isStunned && <div style={{ position: 'absolute', top: -24, left: '50%', transform: 'translateX(-50%)', fontSize: 18 }}>{t.onlineBattle.stun}</div>}
     </div>
   );
 }
@@ -385,47 +392,39 @@ function ComboText({ n }: { n: number }) {
   return <div style={{ fontSize: 13, fontWeight: 'bold', color: '#ffd15c', textShadow: '0 0 10px rgba(255,209,92,0.8), 2px 2px 0 #000' }}>{n} COMBO!</div>;
 }
 
-function SkillHints({ char, slot, align, active }: { char: Character | null | undefined; slot: PlayerSlot; align: 'left' | 'right'; active: boolean }) {
+function SkillHints({ char, slot, align, active, language }: { char: Character | null | undefined; slot: PlayerSlot; align: 'left' | 'right'; active: boolean; language: 'zh' | 'en' }) {
+  const { t } = useI18n();
   if (!char) return <div />;
-  const keyMap: [string, Skill][] = slot === 1
+  const keyMap: [string, keyof Character['skills'], Skill][] = slot === 1
     ? [
-        ['J', char.skills.attack],
-        ['K', char.skills.skill1],
-        ['L', char.skills.skill2],
-        ['I', char.skills.ultimate],
+        ['J', 'attack', char.skills.attack],
+        ['K', 'skill1', char.skills.skill1],
+        ['L', 'skill2', char.skills.skill2],
+        ['I', 'ultimate', char.skills.ultimate],
       ]
     : [
-        ['1', char.skills.attack],
-        ['2', char.skills.skill1],
-        ['3', char.skills.skill2],
-        ['0', char.skills.ultimate],
+        ['1', 'attack', char.skills.attack],
+        ['2', 'skill1', char.skills.skill1],
+        ['3', 'skill2', char.skills.skill2],
+        ['0', 'ultimate', char.skills.ultimate],
       ];
   return (
     <div style={{ textAlign: align, display: 'grid', gap: 6, fontSize: 9, color: '#8e9bb5', minWidth: 0 }}>
       <div style={{ color: char.color, fontSize: 10, display: 'flex', justifyContent: align === 'right' ? 'flex-end' : 'flex-start', alignItems: 'center', gap: 8 }}>
-        {align === 'left' && active && <span style={activeBadgeStyle}>我的按键</span>}
-        <span>{char.name}</span>
-        {align === 'right' && active && <span style={activeBadgeStyle}>我的按键</span>}
+        {align === 'left' && active && <span style={activeBadgeStyle}>{t.onlineBattle.myKeys}</span>}
+        <span>{getCharacterName(char, language)}</span>
+        {align === 'right' && active && <span style={activeBadgeStyle}>{t.onlineBattle.myKeys}</span>}
       </div>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: align === 'right' ? 'flex-end' : 'flex-start' }}>
-        {keyMap.map(([key, skill]) => (
+        {keyMap.map(([key, skillSlot, skill]) => (
           <div key={key} style={skillKeyStyle}>
             <kbd style={kbdStyle}>{key}</kbd>
-            <span style={{ color: '#d8e2f5', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 96 }}>{skill.name}</span>
+            <span style={{ color: '#d8e2f5', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 96 }}>{getSkillName(char, skillSlot, language) || skill.name}</span>
           </div>
         ))}
       </div>
     </div>
   );
-}
-
-function projectileIcon(type: string) {
-  if (type.includes('名片') || type.toLowerCase().includes('card')) return '▰';
-  if (type.includes('财务') || type.includes('审计') || type.toLowerCase().includes('audit')) return '$';
-  if (type.includes('风暴') || type.toLowerCase().includes('storm')) return '!';
-  if (type.includes('代码') || type.includes('键盘')) return '</>';
-  if (type.includes('组织') || type.includes('团建')) return '★';
-  return '◆';
 }
 
 const primaryButton: React.CSSProperties = {

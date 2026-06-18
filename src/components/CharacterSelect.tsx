@@ -1,6 +1,9 @@
 import type { CSSProperties } from 'react';
+import { getSkillDescription, getSkillName, type SkillSlot } from '@/data/skillText';
+import { getCharacterName, getCharacterTitle, useI18n } from '@/i18n';
 import { useGameStore } from '@/store/gameStore';
 import { characters, Character } from '@/data/characters';
+import type { Language } from '@/store/settingsStore';
 import '@/styles/character-select.css';
 
 const MAX_MOVE_SPEED = Math.max(...characters.map((char) => char.moveSpeed));
@@ -19,12 +22,15 @@ function PlayerPreview({
   character,
   active,
   onClick,
+  language,
 }: {
   label: string;
   character: Character | null;
   active: boolean;
   onClick: () => void;
+  language: Language;
 }) {
+  const { t } = useI18n();
   const color = character?.color || '#5a5a7a';
 
   return (
@@ -44,11 +50,11 @@ function PlayerPreview({
       <div style={previewLabelStyle}>
         {label}
         <span style={active ? previewActivePillStyle : previewEditPillStyle}>
-          {active ? '编辑中' : '点击重选'}
+          {active ? t.characterSelect.editing : t.characterSelect.clickToReselect}
         </span>
       </div>
       <div style={previewSpriteStyle}>{character?.sprite || '?'}</div>
-      <div style={{ ...previewNameStyle, color }}>{character?.name || '未选择'}</div>
+      <div style={{ ...previewNameStyle, color }}>{character ? getCharacterName(character, language) : t.characterSelect.notSelected}</div>
     </button>
   );
 }
@@ -58,12 +64,15 @@ function CharacterCard({
   isSelected,
   onClick,
   disabled,
+  language,
 }: {
   character: Character;
   isSelected: boolean;
   onClick: () => void;
   disabled: boolean;
+  language: Language;
 }) {
+  const { t } = useI18n();
   return (
     <button
       onClick={onClick}
@@ -81,34 +90,35 @@ function CharacterCard({
       }}
     >
       <div style={cardSpriteStyle}>{character.sprite}</div>
-      <div style={{ ...cardNameStyle, color: character.color }}>{character.name}</div>
-      <div style={cardTitleStyle}>{character.title}</div>
+      <div style={{ ...cardNameStyle, color: character.color }}>{getCharacterName(character, language)}</div>
+      <div style={cardTitleStyle}>{getCharacterTitle(character, language)}</div>
 
       <div style={statListStyle}>
         <StatRow label="HP" value={character.maxHp} color="#ff6474" />
         <StatRow label="MP" value={character.maxMp} color="#5bb8ff" />
-        <StatRow label="攻速" value={character.attackSpeed} color="#ffe066" />
-        <StatRow label="移速" value={character.moveSpeed} color="#65f0c4" />
+        <StatRow label={t.characterSelect.attackSpeed} value={character.attackSpeed} color="#ffe066" />
+        <StatRow label={t.characterSelect.movementSpeed} value={character.moveSpeed} color="#65f0c4" />
       </div>
     </button>
   );
 }
 
-function SkillDisplay({ character }: { character: Character }) {
+function SkillDisplay({ character, language }: { character: Character; language: Language }) {
+  const { t } = useI18n();
   const moveRatio = Math.max(0, Math.min(1, character.moveSpeed / MAX_MOVE_SPEED));
   const skills = [
-    { key: 'attack', color: '#aaaacc' },
-    { key: 'skill1', color: '#3498db' },
-    { key: 'skill2', color: '#9b59b6' },
-    { key: 'ultimate', color: '#ffd700' },
+    { key: 'attack' as SkillSlot, color: '#aaaacc' },
+    { key: 'skill1' as SkillSlot, color: '#3498db' },
+    { key: 'skill2' as SkillSlot, color: '#9b59b6' },
+    { key: 'ultimate' as SkillSlot, color: '#ffd700' },
   ];
 
   return (
     <div style={skillPanelStyle}>
-      <div style={sectionTitleStyle}>技能预览</div>
+      <div style={sectionTitleStyle}>{t.characterSelect.skillPreview}</div>
       <div style={profileStatPanelStyle}>
         <div style={profileStatHeaderStyle}>
-          <span>移动速度</span>
+          <span>{t.characterSelect.movementSpeed}</span>
           <strong style={{ color: '#65f0c4' }}>{character.moveSpeed}</strong>
         </div>
         <div style={speedTrackStyle}>
@@ -120,11 +130,11 @@ function SkillDisplay({ character }: { character: Character }) {
             }}
           />
         </div>
-        <div style={profileHintStyle}>{getSpeedLabel(character.moveSpeed)}</div>
+        <div style={profileHintStyle}>{getSpeedLabel(character.moveSpeed, t)}</div>
       </div>
       <div style={skillListStyle}>
         {skills.map((s) => {
-          const skill = character.skills[s.key as keyof typeof character.skills];
+          const skill = character.skills[s.key];
           return (
             <div
               key={s.key}
@@ -135,12 +145,12 @@ function SkillDisplay({ character }: { character: Character }) {
               }}
             >
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: '10px', color: s.color, marginBottom: '5px' }}>{skill.name}</div>
-                <div style={skillDescriptionStyle}>{skill.description}</div>
+                <div style={{ fontSize: '10px', color: s.color, marginBottom: '5px' }}>{getSkillName(character, s.key, language)}</div>
+                <div style={skillDescriptionStyle}>{getSkillDescription(character, s.key, language)}</div>
               </div>
               <div style={skillMetaStyle}>
-                <div>伤害: {skill.damage || '-'}</div>
-                <div>耗蓝: {skill.mpCost}</div>
+                <div>{t.characterSelect.damage}: {skill.damage || '-'}</div>
+                <div>{t.characterSelect.mpCost}: {skill.mpCost}</div>
               </div>
             </div>
           );
@@ -150,14 +160,15 @@ function SkillDisplay({ character }: { character: Character }) {
   );
 }
 
-function getSpeedLabel(speed: number) {
-  if (speed <= 2.5) return '重装慢速，适合靠技能压制';
-  if (speed >= 5.5) return '高机动，适合拉扯和追击';
-  if (speed >= 4.8) return '偏快，走位空间更大';
-  return '标准移速，攻防节奏均衡';
+function getSpeedLabel(speed: number, t: ReturnType<typeof useI18n>['t']) {
+  if (speed <= 2.5) return t.characterSelect.speedSlow;
+  if (speed >= 5.5) return t.characterSelect.speedFast;
+  if (speed >= 4.8) return t.characterSelect.speedQuick;
+  return t.characterSelect.speedNormal;
 }
 
 export default function CharacterSelect() {
+  const { language, t } = useI18n();
   const {
     setScreen,
     setSelectPhase,
@@ -184,22 +195,22 @@ export default function CharacterSelect() {
   return (
     <div style={pageStyle}>
       <header style={headerStyle}>
-        <h1 style={titleStyle}>选择你的战士</h1>
+        <h1 style={titleStyle}>{t.characterSelect.title}</h1>
         <p style={subtitleStyle}>
-          {selectPhase === 'p1' ? '👉 玩家1 请选择角色' : '👉 玩家2 请选择角色'}
+          {selectPhase === 'p1' ? t.characterSelect.playerPrompt(1) : t.characterSelect.playerPrompt(2)}
         </p>
       </header>
 
       <main style={mainGridStyle} className="character-select-main">
         <section style={leftColumnStyle} className="character-select-left">
           <div style={duelPreviewStyle} className="character-select-duel">
-            <PlayerPreview label="玩家1" character={player1Character} active={selectPhase === 'p1'} onClick={() => setSelectPhase('p1')} />
+            <PlayerPreview label={t.characterSelect.playerLabel(1)} character={player1Character} active={selectPhase === 'p1'} onClick={() => setSelectPhase('p1')} language={language} />
             <div style={vsStyle}>VS</div>
-            <PlayerPreview label="玩家2" character={player2Character} active={selectPhase === 'p2'} onClick={() => setSelectPhase('p2')} />
+            <PlayerPreview label={t.characterSelect.playerLabel(2)} character={player2Character} active={selectPhase === 'p2'} onClick={() => setSelectPhase('p2')} language={language} />
           </div>
 
           <div style={rosterPanelStyle} className="character-select-roster">
-            <div style={sectionTitleStyle}>角色列表</div>
+            <div style={sectionTitleStyle}>{t.characterSelect.roster}</div>
             <div style={characterGridStyle} className="character-select-grid">
               {characters.map((char) => (
                 <CharacterCard
@@ -210,6 +221,7 @@ export default function CharacterSelect() {
                     (selectPhase === 'p2' && player2Character?.id === char.id)
                   }
                   onClick={() => handleSelect(char)}
+                  language={language}
                   disabled={
                     (selectPhase === 'p1' && player2Character?.id === char.id) ||
                     (selectPhase === 'p2' && player1Character?.id === char.id)
@@ -222,41 +234,41 @@ export default function CharacterSelect() {
 
         <aside style={rightPanelStyle} className="character-select-aside">
           {activeCharacter ? (
-            <SkillDisplay character={activeCharacter} />
+            <SkillDisplay character={activeCharacter} language={language} />
           ) : (
-            <div style={emptySkillStyle}>等待选择角色</div>
+            <div style={emptySkillStyle}>{t.characterSelect.emptySkill}</div>
           )}
 
           <div style={actionsStyle}>
             <button onClick={() => setScreen('title')} style={ghostButtonStyle}>
-              返回
+              {t.common.back}
             </button>
 
             {(player1Character || player2Character) && (
               <button onClick={clearSelections} style={secondaryButtonStyle}>
-                清空选择
+                {t.characterSelect.clearSelection}
               </button>
             )}
 
             {selectPhase === 'p1' && player1Character && (
               <button onClick={() => setSelectPhase('p2')} style={confirmButtonStyle}>
-                玩家2选择
+                {t.characterSelect.player2Select}
               </button>
             )}
 
             {selectPhase === 'p2' && (
               <button onClick={() => setSelectPhase('p1')} style={secondaryButtonStyle}>
-                重新选择玩家1
+                {t.characterSelect.reselectPlayer1}
               </button>
             )}
 
             {selectPhase === 'p2' && canConfirm && (
               <button onClick={initBattle} className="animate-pulse" style={startButtonStyle}>
-                开始战斗
+                {t.characterSelect.startBattle}
               </button>
             )}
 
-            {selectPhase === 'p2' && !canConfirm && <div style={waitingStyle}>等待玩家2选择角色...</div>}
+            {selectPhase === 'p2' && !canConfirm && <div style={waitingStyle}>{t.characterSelect.waitingPlayer2}</div>}
           </div>
         </aside>
       </main>

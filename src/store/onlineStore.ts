@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import type { OnlineError } from '@/i18n/errorText';
 import { BattleStartPayload, GameEvent, GameSnapshot, PlayerSlot, PublicRoomState } from '@/net/protocol';
 
 export type OnlineStage = 'idle' | 'lobby' | 'battle' | 'ended';
@@ -15,7 +16,8 @@ interface OnlineStore {
   snapshot: GameSnapshot | null;
   events: GameEvent[];
   winner: PlayerSlot | null;
-  error: string | null;
+  pingMs: number | null;
+  error: OnlineError | null;
 
   setConnected: (connected: boolean) => void;
   setLobby: (payload: { roomId: string; inviteUrl: string; mySlot: PlayerSlot; reconnectToken: string }) => void;
@@ -24,7 +26,8 @@ interface OnlineStore {
   setSnapshot: (snapshot: GameSnapshot) => void;
   addEvents: (events: GameEvent[]) => void;
   setGameOver: (winner: PlayerSlot) => void;
-  setError: (error: string | null) => void;
+  setPingMs: (pingMs: number | null) => void;
+  setError: (error: OnlineError | null) => void;
   resetOnline: () => void;
 }
 
@@ -40,9 +43,10 @@ export const useOnlineStore = create<OnlineStore>((set) => ({
   snapshot: null,
   events: [],
   winner: null,
+  pingMs: null,
   error: null,
 
-  setConnected: (connected) => set({ connected }),
+  setConnected: (connected) => set((state) => ({ connected, pingMs: connected ? state.pingMs : null })),
   setLobby: ({ roomId, inviteUrl, mySlot, reconnectToken }) =>
     set({ stage: 'lobby', roomId, inviteUrl, mySlot, reconnectToken, error: null }),
   setRoomState: (roomState) =>
@@ -69,6 +73,7 @@ export const useOnlineStore = create<OnlineStore>((set) => ({
   setSnapshot: (snapshot) => set({ snapshot, winner: snapshot.winner }),
   addEvents: (events) => set((state) => ({ events: [...state.events, ...events].slice(-40) })),
   setGameOver: (winner) => set({ stage: 'ended', winner }),
+  setPingMs: (pingMs) => set({ pingMs }),
   setError: (error) => set({ error }),
   resetOnline: () =>
     set({
@@ -83,6 +88,7 @@ export const useOnlineStore = create<OnlineStore>((set) => ({
       snapshot: null,
       events: [],
       winner: null,
+      pingMs: null,
       error: null,
     }),
 }));

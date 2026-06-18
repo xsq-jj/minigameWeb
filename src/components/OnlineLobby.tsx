@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Copy, Link2, Plug, RadioTower, Swords, UserCheck, WifiOff } from 'lucide-react';
 import { characters } from '@/data/characters';
+import { getCharacterName, getCharacterTitle, getOnlineErrorText, useI18n } from '@/i18n';
 import { getRoomIdFromUrl, isInviteJoinUrl } from '@/net/roomUrl';
 import { getSocketServerUrl } from '@/net/socketClient';
 import { useOnlineRoom } from '@/net/useOnlineRoom';
@@ -8,6 +9,7 @@ import { useOnlineStore } from '@/store/onlineStore';
 import { useGameStore } from '@/store/gameStore';
 
 export default function OnlineLobby() {
+  const { language, t } = useI18n();
   const [nickname, setNickname] = useState(() => `Player${Math.floor(Math.random() * 900 + 100)}`);
   const [joinCode, setJoinCode] = useState(() => getRoomIdFromUrl() || '');
   const [openedFromInvite] = useState(() => isInviteJoinUrl());
@@ -71,8 +73,8 @@ export default function OnlineLobby() {
       <main style={{ position: 'relative', width: 'min(1120px, calc(100vw - 32px))', height: '100%', margin: '0 auto', padding: '32px 0', display: 'grid', gridTemplateRows: 'auto 1fr auto', gap: 20 }}>
         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
           <div>
-            <div style={{ fontSize: 11, color: '#7be7c7', letterSpacing: 1.5, marginBottom: 10 }}>ONLINE ROOM</div>
-            <h1 style={{ fontSize: 28, color: '#ffd15c', textShadow: '0 0 22px rgba(255, 209, 92, 0.45)' }}>在线对战大厅</h1>
+            <div style={{ fontSize: 11, color: '#7be7c7', letterSpacing: 1.5, marginBottom: 10 }}>{t.onlineLobby.eyebrow}</div>
+            <h1 style={{ fontSize: 28, color: '#ffd15c', textShadow: '0 0 22px rgba(255, 209, 92, 0.45)' }}>{t.onlineLobby.title}</h1>
           </div>
           <button
             onClick={() => {
@@ -81,7 +83,7 @@ export default function OnlineLobby() {
             }}
             style={ghostButton}
           >
-            返回首页
+            {t.common.backHome}
           </button>
         </header>
 
@@ -89,21 +91,21 @@ export default function OnlineLobby() {
           <div style={panelStyle}>
             <div style={panelTitleStyle}>
               {connected ? <RadioTower size={18} /> : <WifiOff size={18} />}
-              <span>{connected ? '已连接后端' : '连接中'}</span>
+              <span>{connected ? t.onlineLobby.connected : t.onlineLobby.connecting}</span>
             </div>
             {!roomId ? (
               <div style={{ display: 'grid', gap: 16 }}>
                 <label style={labelStyle}>
-                  昵称
+                  {t.onlineLobby.nickname}
                   <input value={nickname} onChange={(event) => setNickname(event.target.value)} style={inputStyle} maxLength={24} />
                 </label>
                 <button onClick={() => createRoom(nickname)} disabled={!connected} style={primaryButton}>
                   <Plug size={18} />
-                  创建在线房间
+                  {t.onlineLobby.createRoom}
                 </button>
                 <div style={{ height: 1, background: 'rgba(255,255,255,0.12)' }} />
                 <label style={labelStyle}>
-                  房间号
+                  {t.onlineLobby.roomCode}
                   <input value={joinCode} onChange={(event) => setJoinCode(event.target.value.toUpperCase())} style={inputStyle} maxLength={12} />
                 </label>
                 <button
@@ -112,36 +114,36 @@ export default function OnlineLobby() {
                   style={secondaryButton}
                 >
                   <Link2 size={18} />
-                  加入房间
+                  {t.onlineLobby.joinRoom}
                 </button>
               </div>
             ) : (
               <div style={{ display: 'grid', gap: 14 }}>
-                <div style={{ fontSize: 10, color: '#92a1bd' }}>房间号</div>
+                <div style={{ fontSize: 10, color: '#92a1bd' }}>{t.onlineLobby.roomCode}</div>
                 <div style={{ fontSize: 30, color: '#ffffff', letterSpacing: 3 }}>{roomId}</div>
                 <button onClick={copyInvite} style={primaryButton}>
                   <Copy size={18} />
-                  {copied ? '已复制邀请链接' : '复制邀请链接'}
+                  {copied ? t.onlineLobby.copiedInvite : t.onlineLobby.copyInvite}
                 </button>
                 <div style={{ fontSize: 9, color: '#74839f', lineHeight: 1.7, wordBreak: 'break-all' }}>{inviteUrl}</div>
                 <div style={{ height: 1, background: 'rgba(255,255,255,0.12)' }} />
-                <PlayerLine label="我的席位" player={me} highlight />
-                <PlayerLine label="对手席位" player={opponent} />
+                <PlayerLine label={t.onlineLobby.mySlot} player={me} highlight />
+                <PlayerLine label={t.onlineLobby.opponentSlot} player={opponent} />
                 {roomState?.status === 'countdown' && (
                   <div style={{ padding: 14, border: '1px solid rgba(255, 209, 92, 0.35)', background: 'rgba(255, 209, 92, 0.1)', color: '#ffd15c', fontSize: 12 }}>
-                    对战即将开始：{countdown}s
+                    {t.onlineLobby.countdown(countdown)}
                   </div>
                 )}
               </div>
             )}
-            {error && <div style={{ marginTop: 14, color: '#ff6b7a', fontSize: 10, lineHeight: 1.6 }}>{error}</div>}
+            {error && <div style={{ marginTop: 14, color: '#ff6b7a', fontSize: 10, lineHeight: 1.6 }}>{getOnlineErrorText(error, language)}</div>}
           </div>
 
           {roomId && (
             <div style={panelStyle}>
               <div style={panelTitleStyle}>
                 <Swords size={18} />
-                <span>选择角色</span>
+                <span>{t.onlineLobby.chooseCharacter}</span>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(142px, 1fr))', gap: 12, overflowY: 'auto', paddingRight: 4 }}>
                 {characters.map((character) => {
@@ -168,19 +170,19 @@ export default function OnlineLobby() {
                       }}
                     >
                       <div style={{ fontSize: 42 }}>{character.sprite}</div>
-                      <div style={{ color: character.color, fontSize: 11 }}>{character.name}</div>
-                      <div style={{ color: '#9aa8c0', fontSize: 8 }}>{character.title}</div>
+                      <div style={{ color: character.color, fontSize: 11 }}>{getCharacterName(character, language)}</div>
+                      <div style={{ color: '#9aa8c0', fontSize: 8 }}>{getCharacterTitle(character, language)}</div>
                     </button>
                   );
                 })}
               </div>
               <div style={{ marginTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
                 <div style={{ color: '#8998b4', fontSize: 10, lineHeight: 1.7 }}>
-                  两位玩家都选择角色并准备后，服务器会倒计时开战。
+                  {t.onlineLobby.readyHint}
                 </div>
                 <button onClick={() => setReady(!me?.ready)} disabled={!me?.characterId || !canEditLobby} style={me?.ready ? readyButton : primaryButton}>
                   <UserCheck size={18} />
-                  {me?.ready ? '取消准备' : '准备'}
+                  {me?.ready ? t.onlineLobby.cancelReady : t.onlineLobby.ready}
                 </button>
               </div>
             </div>
@@ -189,7 +191,7 @@ export default function OnlineLobby() {
 
         <footer style={{ color: '#526079', fontSize: 9, display: 'flex', justifyContent: 'space-between' }}>
           <span>Socket.IO server: {socketServerUrl}</span>
-          <span>本地模式不受影响</span>
+          <span>{t.onlineLobby.localUnaffected}</span>
         </footer>
       </main>
     </div>
@@ -197,14 +199,15 @@ export default function OnlineLobby() {
 }
 
 function PlayerLine({ label, player, highlight }: { label: string; player: { nickname: string; ready: boolean; connected: boolean; characterId: string | null } | null; highlight?: boolean }) {
+  const { t } = useI18n();
   return (
     <div style={{ padding: 12, background: highlight ? 'rgba(123,231,199,0.09)' : 'rgba(255,255,255,0.045)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8 }}>
       <div style={{ color: '#7e8da8', fontSize: 9, marginBottom: 8 }}>{label}</div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-        <span style={{ color: '#f5f7fb', fontSize: 11 }}>{player?.nickname || '等待加入'}</span>
-        <span style={{ color: player?.ready ? '#7be7c7' : '#ffd15c', fontSize: 9 }}>{player ? (player.ready ? 'READY' : 'WAIT') : 'EMPTY'}</span>
+        <span style={{ color: '#f5f7fb', fontSize: 11 }}>{player?.nickname || t.onlineLobby.waitingJoin}</span>
+        <span style={{ color: player?.ready ? '#7be7c7' : '#ffd15c', fontSize: 9 }}>{player ? (player.ready ? t.onlineLobby.readyStatus : t.onlineLobby.waitStatus) : t.onlineLobby.emptyStatus}</span>
       </div>
-      <div style={{ color: '#7d8da7', fontSize: 9, marginTop: 8 }}>{player?.characterId || '未选择角色'} · {player?.connected ? 'online' : 'offline'}</div>
+      <div style={{ color: '#7d8da7', fontSize: 9, marginTop: 8 }}>{player?.characterId || t.common.notSelected} · {player?.connected ? t.common.online : t.common.offline}</div>
     </div>
   );
 }

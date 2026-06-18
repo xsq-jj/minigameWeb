@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
+import { getProjectileIcon } from '@/data/projectileVisuals';
+import { getSkillDescription, getSkillName, type SkillSlot } from '@/data/skillText';
+import { getCharacterName, useI18n } from '@/i18n';
 import { useGameStore } from '@/store/gameStore';
+import { useSettingsStore } from '@/store/settingsStore';
+import type { Language } from '@/store/settingsStore';
 import { gameState, GameState } from '@/game/GameState';
 import { tick } from '@/game/engine';
 import {
@@ -111,15 +116,9 @@ function drawParticles(ctx: CanvasRenderingContext2D, particles: Particle[]) {
   ctx.globalAlpha = 1;
 }
 
-// ─── Emoji for projectiles ──────────────────────────────
-const projEmojis: Record<string, string> = {
-  '代码注入': '⌨️', '键盘弹幕': '⌨️', '绩效谈话': '📋', '裁员风暴': '📄',
-  '报销单据': '📄', '财务审计': '🧮', '名片飞射': '💳', '签单时刻': '📝',
-  '会议室预定': '📅', '组织团建': '🧺', '系统崩溃': '💻', '精确预算': '💰',
-};
-
 // ─── MAIN COMPONENT ─────────────────────────────────────
 export default function BattleArena() {
+  const { t } = useI18n();
   const fgCanvasRef = useRef<HTMLCanvasElement>(null);
   const bgCanvasRef = useRef<HTMLCanvasElement>(null);
   const keysRef = useRef<Set<string>>(new Set());
@@ -129,6 +128,7 @@ export default function BattleArena() {
   const setSelectPhase = useGameStore((s) => s.setSelectPhase);
   const p1Char = useGameStore((s) => s.player1Character);
   const p2Char = useGameStore((s) => s.player2Character);
+  const language = useSettingsStore((s) => s.language);
 
   // The mutable game state lives in a ref — React never sees it
   const stateRef = useRef(gameState);
@@ -254,7 +254,7 @@ export default function BattleArena() {
         {/* Projectiles */}
         {ui.projectiles.map((p) => (
           <div key={p.id} style={{ position: 'absolute', left: p.x - 20, top: p.y - 15, fontSize: 30, filter: `drop-shadow(0 0 15px ${p.color})`, zIndex: 8 }}>
-            {projEmojis[p.type] || '⚡'}
+            {getProjectileIcon(p.type)}
           </div>
         ))}
 
@@ -280,11 +280,11 @@ export default function BattleArena() {
 
       {/* Bottom bar: skill info */}
       <div style={{ width: GAME_WIDTH, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'stretch', padding: '6px 16px', background: 'linear-gradient(0deg, #0f0f28 0%, #151530 100%)', borderTop: '2px solid #2a2a4a', fontSize: 9, color: '#8888aa', flex: 1, gap: 8 }}>
-        <SkillBar char={p1Char} side="left" />
+        <SkillBar char={p1Char} side="left" language={language} />
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, flexShrink: 0 }}>
-          <button onClick={() => { setSelectPhase('p1'); setScreen('select'); }} style={{ padding: '10px 18px', background: 'rgba(50,50,70,0.8)', border: '1px solid #4a4a6a', borderRadius: 6, color: '#aaaacc', cursor: 'pointer', fontFamily: 'inherit', fontSize: 10, whiteSpace: 'nowrap' }}>返回选择</button>
+          <button onClick={() => { setSelectPhase('p1'); setScreen('select'); }} style={{ padding: '10px 18px', background: 'rgba(50,50,70,0.8)', border: '1px solid #4a4a6a', borderRadius: 6, color: '#aaaacc', cursor: 'pointer', fontFamily: 'inherit', fontSize: 10, whiteSpace: 'nowrap' }}>{t.battle.backToSelect}</button>
         </div>
-        <SkillBar char={p2Char} side="right" />
+        <SkillBar char={p2Char} side="right" language={language} />
       </div>
     </div>
   );
@@ -314,6 +314,19 @@ function ComboText({ n }: { n: number }) {
   );
 }
 
+function localizePopupText(text: string, language: 'zh' | 'en') {
+  const activeCharacters = [gameState.p1?.character, gameState.p2?.character].filter(Boolean);
+  for (const character of activeCharacters) {
+    const slots: SkillSlot[] = ['attack', 'skill1', 'skill2', 'ultimate'];
+    for (const slot of slots) {
+      if (character.skills[slot].name === text) {
+        return getSkillName(character, slot, language);
+      }
+    }
+  }
+  return text;
+}
+
 function FighterDiv({ pos, stats, flip }: { pos: { x: number; y: number; facingRight: boolean }; stats: UISnapshot['p1Stats']; flip?: boolean }) {
   const dir = flip ? (pos.facingRight ? 'scaleX(-1)' : '') : (pos.facingRight ? '' : 'scaleX(-1)');
   return (
@@ -332,9 +345,6 @@ function FighterDiv({ pos, stats, flip }: { pos: { x: number; y: number; facingR
 }
 
 // ─── Type badge ────────────────────────────────────────────
-const typeLabels: Record<string, string> = {
-  melee: '近战', ranged: '远程', buff: '增益', heal: '治疗', debuff: '减益',
-};
 const typeColors: Record<string, string> = {
   melee: '#ff6b6b', ranged: '#3498db', buff: '#2ecc71', heal: '#1abc9c', debuff: '#9b59b6',
 };
@@ -356,22 +366,23 @@ const skillKbdStyle: React.CSSProperties = {
 };
 
 // ─── Skill info bar ────────────────────────────────────────
-function SkillBar({ char, side }: { char: import('@/data/characters').Character | null; side: 'left' | 'right' }) {
+function SkillBar({ char, side, language }: { char: import('@/data/characters').Character | null; side: 'left' | 'right'; language: Language }) {
+  const { t } = useI18n();
   if (!char) return null;
   const keys = side === 'left' ? ['J', 'K', 'L', 'I'] : ['1', '2', '3', '0'];
-  const skills = [
-    { label: '普攻', key: keys[0], data: char.skills.attack },
-    { label: '技能1', key: keys[1], data: char.skills.skill1 },
-    { label: '技能2', key: keys[2], data: char.skills.skill2 },
-    { label: '终极', key: keys[3], data: char.skills.ultimate },
+  const localizedSkills = [
+    { label: t.battle.skillLabels.attack, key: keys[0], slot: 'attack' as SkillSlot, data: char.skills.attack },
+    { label: t.battle.skillLabels.skill1, key: keys[1], slot: 'skill1' as SkillSlot, data: char.skills.skill1 },
+    { label: t.battle.skillLabels.skill2, key: keys[2], slot: 'skill2' as SkillSlot, data: char.skills.skill2 },
+    { label: t.battle.skillLabels.ultimate, key: keys[3], slot: 'ultimate' as SkillSlot, data: char.skills.ultimate },
   ];
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 3, flex: 1, minWidth: 0 }}>
       <div style={{ fontSize: 10, fontWeight: 'bold', color: char.color, textAlign: side }}>
-        {side === 'left' ? '👈 ' : ''}{char.name}{side === 'right' ? ' 👉' : ''}
+        {side === 'left' ? '👈 ' : ''}{getCharacterName(char, language)}{side === 'right' ? ' 👉' : ''}
       </div>
       <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: side === 'right' ? 'flex-end' : 'flex-start' }}>
-        {skills.map((s) => (
+        {localizedSkills.map((s) => (
           <div key={s.label} style={{
             display: 'flex', alignItems: 'center', gap: 4,
             padding: '3px 6px', borderRadius: 4,
@@ -385,9 +396,9 @@ function SkillBar({ char, side }: { char: import('@/data/characters').Character 
               fontSize: 8, padding: '1px 4px', borderRadius: 3,
               background: `${typeColors[s.data.type]}33`,
               color: typeColors[s.data.type], fontWeight: 'bold', whiteSpace: 'nowrap',
-            }}>{typeLabels[s.data.type] || s.data.type}</span>
+            }}>{t.battle.skillTypes[s.data.type] || s.data.type}</span>
             <span style={{ color: '#8888aa', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 100 }}>
-              {s.data.description}
+              {getSkillName(char, s.slot, language)} · {getSkillDescription(char, s.slot, language)}
             </span>
           </div>
         ))}

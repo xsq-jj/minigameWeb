@@ -7,11 +7,18 @@ import VictoryScreen from '@/components/VictoryScreen';
 import OnlineLobby from '@/components/OnlineLobby';
 import BattleArenaOnline from '@/components/BattleArenaOnline';
 import { useOnlineStore } from '@/store/onlineStore';
+import { useI18n } from '@/i18n';
 
 export default function App() {
+  const { language, t } = useI18n();
   const screen = useGameStore((s) => s.screen);
   const setScreen = useGameStore((s) => s.setScreen);
   const onlineStage = useOnlineStore((s) => s.stage);
+
+  useEffect(() => {
+    document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
+    document.title = t.title.title;
+  }, [language, t.title.title]);
 
   useEffect(() => {
     if (onlineStage === 'battle' && screen === 'online') {

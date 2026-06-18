@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
+import { onlineError, onlineErrorCodes } from '@/i18n/errorText';
 import { createGameSocket, disconnectGameSocket, GameSocket } from '@/net/socketClient';
-import { buildInviteUrl, buildRoomUrl, getSessionReconnectToken, setSessionReconnectToken } from '@/net/roomUrl';
+import { buildInviteUrl, buildRoomUrl, clearRoomFromUrl, getSessionReconnectToken, setSessionReconnectToken } from '@/net/roomUrl';
 import { AckResult, CreateRoomResult, JoinRoomResult, PlayerInput } from '@/net/protocol';
 import { useOnlineStore } from '@/store/onlineStore';
 
@@ -40,6 +41,15 @@ function readyAck(socket: GameSocket, payload: { roomId: string; ready: boolean 
   });
 }
 
+function measurePing(socket: GameSocket): void {
+  if (!socket.connected) return;
+  const clientTime = performance.now();
+  socket.timeout(1000).emit('ping:measure', { clientTime }, (err, result) => {
+    if (err || !result?.ok) return;
+    useOnlineStore.getState().setPingMs(Math.round(performance.now() - result.clientTime));
+  });
+}
+
 export function useOnlineRoom() {
   const socketRef = useRef<GameSocket | null>(null);
 
@@ -48,7 +58,9 @@ export function useOnlineRoom() {
     try {
       socket = createGameSocket();
     } catch (error) {
-      useOnlineStore.getState().setError(error instanceof Error ? error.message : 'Socket.IO server is not configured');
+      useOnlineStore.getState().setError(
+        onlineError(onlineErrorCodes.SOCKET_NOT_CONFIGURED, error instanceof Error ? error.message : undefined)
+      );
       return;
     }
 
@@ -56,7 +68,7 @@ export function useOnlineRoom() {
 
     const onConnect = () => useOnlineStore.getState().setConnected(true);
     const onDisconnect = () => useOnlineStore.getState().setConnected(false);
-    const onRoomError = (payload: { code: string; message: string }) => useOnlineStore.getState().setError(payload.message);
+    const onRoomError = (payload: { code: string; message: string }) => useOnlineStore.getState().setError(onlineError(payload.code, payload.message));
     const onGameOver = (payload: { roomId: string; winner: 1 | 2 }) => useOnlineStore.getState().setGameOver(payload.winner);
     const onRoomState = useOnlineStore.getState().setRoomState;
     const onBattleStart = useOnlineStore.getState().setBattleStart;
@@ -72,8 +84,11 @@ export function useOnlineRoom() {
     socket.on('battle:events', onEvents);
     socket.on('battle:game-over', onGameOver);
     if (socket.connected) useOnlineStore.getState().setConnected(true);
+    measurePing(socket);
+    const pingTimer = window.setInterval(() => measurePing(socket), 2000);
 
     return () => {
+      window.clearInterval(pingTimer);
       socket.off('connect', onConnect);
       socket.off('disconnect', onDisconnect);
       socket.off('room:state', onRoomState);
@@ -95,7 +110,7 @@ export function useOnlineRoom() {
       try {
         const result = await createRoomAck(socket, { nickname });
         if (!result.ok || !result.roomId || !result.slot || !result.reconnectToken) {
-          setError(result.message || '创建房间失败');
+          setError(onlineError(result.error || onlineErrorCodes.CREATE_ROOM_FAILED, result.message));
           return false;
         }
         setSessionReconnectToken(result.roomId, result.reconnectToken);
@@ -104,7 +119,7 @@ export function useOnlineRoom() {
         window.history.replaceState({}, '', buildRoomUrl(result.roomId));
         return true;
       } catch {
-        setError('连接后端失败，请确认 3001 服务已启动');
+        setError(onlineError(onlineErrorCodes.BACKEND_CONNECT_FAILED));
         return false;
       }
     },
@@ -121,7 +136,7 @@ export function useOnlineRoom() {
         const reconnectToken = options?.asNewPlayer ? undefined : getSessionReconnectToken(targetRoomId);
         const result = await joinRoomAck(socket, { roomId: targetRoomId, nickname, reconnectToken });
         if (!result.ok || !result.roomId || !result.slot || !result.reconnectToken) {
-          setError(result.message || '加入房间失败');
+          setError(onlineError(result.error || onlineErrorCodes.JOIN_ROOM_FAILED, result.message));
           return false;
         }
         setSessionReconnectToken(result.roomId, result.reconnectToken);
@@ -130,7 +145,7 @@ export function useOnlineRoom() {
         window.history.replaceState({}, '', buildRoomUrl(result.roomId));
         return true;
       } catch {
-        setError('加入房间超时，请检查房间号或后端服务');
+        setError(onlineError(onlineErrorCodes.JOIN_ROOM_TIMEOUT));
         return false;
       }
     },
@@ -144,7 +159,7 @@ export function useOnlineRoom() {
       if (!socket || !currentRoomId) return false;
       const result = await selectCharacterAck(socket, { roomId: currentRoomId, characterId });
       if (!result.ok) {
-        useOnlineStore.getState().setError(result.message || '角色选择失败');
+        useOnlineStore.getState().setError(onlineError(result.error || onlineErrorCodes.SELECT_CHARACTER_FAILED, result.message));
         return false;
       }
       return true;
@@ -159,7 +174,7 @@ export function useOnlineRoom() {
       if (!socket || !currentRoomId) return false;
       const result = await readyAck(socket, { roomId: currentRoomId, ready });
       if (!result.ok) {
-        useOnlineStore.getState().setError(result.message || '准备失败');
+        useOnlineStore.getState().setError(onlineError(result.error || onlineErrorCodes.READY_FAILED, result.message));
         return false;
       }
       return true;
@@ -181,11 +196,13 @@ export function useOnlineRoom() {
       socket.emit('room:leave', { roomId });
     }
     useOnlineStore.getState().resetOnline();
+    clearRoomFromUrl();
   }, []);
 
   const disconnect = useCallback(() => {
     disconnectGameSocket();
     useOnlineStore.getState().resetOnline();
+    clearRoomFromUrl();
   }, []);
 
   return {

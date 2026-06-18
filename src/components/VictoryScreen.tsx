@@ -1,10 +1,16 @@
+import { getCharacterName, getCharacterTitle, useI18n } from '@/i18n';
 import { useGameStore } from '@/store/gameStore';
 
 export default function VictoryScreen() {
+  const { language, t } = useI18n();
   const { winner, player1Character, player2Character, setScreen, reset } = useGameStore();
 
   const winnerChar = winner === 1 ? player1Character : player2Character;
   const loserChar = winner === 1 ? player2Character : player1Character;
+  const winnerName = getCharacterName(winnerChar, language);
+  const winnerTitle = getCharacterTitle(winnerChar, language);
+  const loserName = getCharacterName(loserChar, language);
+  const loserTitle = getCharacterTitle(loserChar, language);
 
   return (
     <div
@@ -20,7 +26,7 @@ export default function VictoryScreen() {
         overflow: 'hidden',
       }}
     >
-      {/* 胜利光环 */}
+      {/* Victory aura */}
       <div
         style={{
           position: 'absolute',
@@ -32,7 +38,7 @@ export default function VictoryScreen() {
         }}
       />
 
-      {/* 装饰 */}
+      {/* Decoration */}
       <div
         style={{
           position: 'absolute',
@@ -66,7 +72,7 @@ export default function VictoryScreen() {
         ✨
       </div>
 
-      {/* 胜利标题 */}
+      {/* Victory title */}
       <div
         className="animate-slide-up"
         style={{
@@ -86,7 +92,7 @@ export default function VictoryScreen() {
             marginBottom: '10px',
           }}
         >
-          玩家{winner} 获胜!
+          {t.victory.playerWins(winner || 1)}
         </h1>
         <p
           style={{
@@ -94,11 +100,11 @@ export default function VictoryScreen() {
             color: '#aaaacc',
           }}
         >
-          {winnerChar?.name} ({winnerChar?.title}) 获得了胜利!
+          {t.victory.characterWins(winnerName, winnerTitle)}
         </p>
       </div>
 
-      {/* 角色展示 */}
+      {/* Character display */}
       <div
         className="animate-slide-up"
         style={{
@@ -108,7 +114,7 @@ export default function VictoryScreen() {
           marginBottom: '50px',
         }}
       >
-        {/* 赢家 */}
+        {/* Winner */}
         <div
           style={{
             textAlign: 'center',
@@ -134,9 +140,9 @@ export default function VictoryScreen() {
               marginTop: '10px',
             }}
           >
-            {winnerChar?.name}
+            {winnerName}
           </div>
-          <div style={{ fontSize: '12px', color: '#aaaacc' }}>{winnerChar?.title}</div>
+          <div style={{ fontSize: '12px', color: '#aaaacc' }}>{winnerTitle}</div>
           <div
             style={{
               fontSize: '14px',
@@ -144,7 +150,7 @@ export default function VictoryScreen() {
               marginTop: '10px',
             }}
           >
-            👑 冠军
+            👑 {t.victory.champion}
           </div>
         </div>
 
@@ -158,7 +164,7 @@ export default function VictoryScreen() {
           VS
         </div>
 
-        {/* 输家 */}
+        {/* Loser */}
         <div
           style={{
             textAlign: 'center',
@@ -184,13 +190,13 @@ export default function VictoryScreen() {
               marginTop: '10px',
             }}
           >
-            {loserChar?.name}
+            {loserName}
           </div>
-          <div style={{ fontSize: '10px', color: '#444466' }}>{loserChar?.title}</div>
+          <div style={{ fontSize: '10px', color: '#444466' }}>{loserTitle}</div>
         </div>
       </div>
 
-      {/* 按钮 */}
+      {/* Actions */}
       <div
         className="animate-slide-up"
         style={{
@@ -212,7 +218,7 @@ export default function VictoryScreen() {
             boxShadow: '0 4px 0 #1b5e20',
           }}
         >
-          再来一局
+          {t.victory.playAgain}
         </button>
         <button
           onClick={() => {
@@ -231,7 +237,7 @@ export default function VictoryScreen() {
             boxShadow: '0 4px 0 #bf360c',
           }}
         >
-          更换角色
+          {t.victory.changeCharacter}
         </button>
         <button
           onClick={() => {
@@ -249,7 +255,7 @@ export default function VictoryScreen() {
             cursor: 'pointer',
           }}
         >
-          返回首页
+          {t.common.backHome}
         </button>
       </div>
     </div>
